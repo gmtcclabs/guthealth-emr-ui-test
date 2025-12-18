@@ -213,61 +213,9 @@ async function handleProducts(env: Env): Promise<Response> {
 
 async function handleCartCreate(request: Request, env: Env): Promise<Response> {
   try {
-    const { variantId, quantity = 1, customerEmail } = await request.json();
+    const { variantId, quantity = 1 } = await request.json();
     
-    // Create cart using Storefront API
-    const cartMutation = `
-      mutation cartCreate($input: CartInput!) {
-        cartCreate(input: $input) {
-          cart {
-            id
-            checkoutUrl
-            totalQuantity
-            cost {
-              totalAmount {
-                amount
-                currencyCode
-              }
-            }
-            lines(first: 10) {
-              edges {
-                node {
-                  id
-                  quantity
-                  merchandise {
-                    ... on ProductVariant {
-                      id
-                      title
-                      product {
-                        title
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-          userErrors {
-            field
-            message
-          }
-        }
-      }
-    `;
-    
-    const variables = {
-      input: {
-        lines: [{
-          merchandiseId: `gid://shopify/ProductVariant/${variantId}`,
-          quantity: quantity
-        }],
-        buyerIdentity: customerEmail ? {
-          email: customerEmail
-        } : undefined
-      }
-    };
-    
-    // For now, use direct cart URL since we need Storefront API token
+    // Use direct cart URL with correct store domain
     const cartUrl = `https://${env.SHOPIFY_STORE_URL}/cart/${variantId}:${quantity}`;
     
     return new Response(JSON.stringify({

@@ -42,18 +42,23 @@ const StorePage: React.FC<StorePageProps> = ({ onNavigateToEmr }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           variantId: product.variants[0].id,
-          quantity: 1,
-          customerEmail: '' // Could collect this from a form
+          quantity: 1
         })
       });
       
-      const { checkoutUrl } = await response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
       
       // Redirect to Shopify checkout
-      window.location.href = checkoutUrl;
+      window.location.href = data.checkoutUrl;
     } catch (error) {
       console.error('Checkout failed:', error);
-      alert('Checkout failed. Please try again.');
+      // Fallback to direct Shopify store
+      const fallbackUrl = `https://testing-1234563457896534798625436789983.myshopify.com/cart/${product.variants[0].id}:1`;
+      window.location.href = fallbackUrl;
     }
   };
 
