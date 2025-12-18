@@ -11,7 +11,7 @@ interface StorePageProps {
 const StorePage: React.FC<StorePageProps> = ({ onNavigateToEmr }) => {
   const { buyItem } = useStore();
   const [products, setProducts] = useState<ShopifyProduct[]>([]);
-  const [loading, setLoading]_useState(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
