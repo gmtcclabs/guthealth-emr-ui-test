@@ -30,7 +30,7 @@ async function handleAPI(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   
   if (url.pathname === '/api/auth/callback') {
-    return new Response('Auth callback handled', { status: 200 });
+    return handleOAuthCallback(request, env);
   }
   
   if (url.pathname === '/webhooks') {
@@ -48,58 +48,60 @@ async function handleAPI(request: Request, env: Env): Promise<Response> {
   return new Response('Not found', { status: 404 });
 }
 
-async function handleCheckout(request: Request, env: Env): Promise<Response> {
+async function handleOAuthCallback(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const code = url.searchParams.get('code');
+  const shop = url.searchParams.get('shop');
+  
+  if (!code || !shop) {
+    return new Response('Missing code or shop parameter', { status: 400 });
+  }
+
   try {
-    const { variantId, quantity } = await request.json();
-    
-    // Create checkout using Shopify Storefront API
-    const checkoutMutation = `
-      mutation checkoutCreate($input: CheckoutCreateInput!) {
-        checkoutCreate(input: $input) {
-          checkout {
-            id
-            webUrl
-          }
-          checkoutUserErrors {
-            field
-            message
-          }
-        }
-      }
-    `;
-    
-    const variables = {
-      input: {
-        lineItems: [{
-          variantId: `gid://shopify/ProductVariant/${variantId}`,
-          quantity: quantity
-        }]
-      }
-    };
-    
-    const response = await fetch(`https://${env.SHOPIFY_STORE_URL}/api/2024-01/graphql.json`, {
+    // Exchange code for access token
+    const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Storefront-Access-Token': env.SHOPIFY_STOREFRONT_ACCESS_TOKEN
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        query: checkoutMutation,
-        variables: variables
+        client_id: env.SHOPIFY_API_KEY,
+        client_secret: env.SHOPIFY_API_SECRET,
+        code: code
       })
     });
+
+    const tokenData = await tokenResponse.json();
     
-    const data = await response.json();
+    // Store the access token (in production, save to database)
+    // For now, redirect to success page
+    return new Response(`
+      <html>
+        <body>
+          <h1>App Installed Successfully!</h1>
+          <p>Shop: ${shop}</p>
+          <p>Access Token: ${tokenData.access_token}</p>
+          <a href="https://${shop}/admin/apps">Return to Admin</a>
+        </body>
+      </html>
+    `, {
+      headers: { 'Content-Type': 'text/html' }
+    });
+  } catch (error) {
+    return new Response('OAuth failed', { status: 500 });
+  }
+}
+
+async function handleCheckout(request: Request, env: Env): Promise<Response> {
+  // For public apps, you'd need the shop's access token from OAuth
+  // For now, return a simple redirect to the product page
+  try {
+    const { productHandle } = await request.json();
+    const shop = 'testing-1234563457896534798625436789983.myshopify.com';
     
-    if (data.data?.checkoutCreate?.checkout) {
-      return new Response(JSON.stringify({
-        checkoutUrl: data.data.checkoutCreate.checkout.webUrl
-      }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } else {
-      throw new Error('Failed to create checkout');
-    }
+    return new Response(JSON.stringify({
+      checkoutUrl: `https://${shop}/products/${productHandle}`
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
   } catch (error) {
     return new Response(JSON.stringify({ error: 'Checkout failed' }), {
       status: 500,
