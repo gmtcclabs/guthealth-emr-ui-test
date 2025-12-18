@@ -1,0 +1,8 @@
+{
+  "name": "guthealth-emr-ui-test",
+  "compatibility_date": "2025-12-18",
+  "main": "src/index.ts",
+  "assets": {
+    "directory": "./dist"
+  }
+}

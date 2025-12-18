@@ -1,0 +1,24 @@
+name = "guthealth-emr-ui-test"
+client_id = "31b2854e12a0b18176b566aaf2655135"
+application_url = "https://guthealth-emr-ui-test.gmtcc2025.workers.dev"
+embedded = true
+
+[access_scopes]
+scopes = "read_products,write_products"
+
+[auth]
+redirect_urls = [
+  "https://guthealth-emr-ui-test.gmtcc2025.workers.dev/api/auth/callback",
+  "https://localhost:3000/api/auth/callback"
+]
+
+[webhooks]
+api_version = "2024-01"
+
+[[webhooks.subscriptions]]
+topics = ["app/uninstalled"]
+compliance_topics = ["customers/redact", "customers/data_request", "shop/redact"]
+uri = "/webhooks"
+
+[build]
+automatically_update_urls_on_dev = true
