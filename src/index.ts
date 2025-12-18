@@ -40,8 +40,72 @@ async function handleAPI(request: Request, env: Env): Promise<Response> {
   if (url.pathname === '/api/products') {
     return handleProducts(env);
   }
+
+  if (url.pathname === '/api/checkout') {
+    return handleCheckout(request, env);
+  }
   
   return new Response('Not found', { status: 404 });
+}
+
+async function handleCheckout(request: Request, env: Env): Promise<Response> {
+  try {
+    const { variantId, quantity } = await request.json();
+    
+    // Create checkout using Shopify Storefront API
+    const checkoutMutation = `
+      mutation checkoutCreate($input: CheckoutCreateInput!) {
+        checkoutCreate(input: $input) {
+          checkout {
+            id
+            webUrl
+          }
+          checkoutUserErrors {
+            field
+            message
+          }
+        }
+      }
+    `;
+    
+    const variables = {
+      input: {
+        lineItems: [{
+          variantId: `gid://shopify/ProductVariant/${variantId}`,
+          quantity: quantity
+        }]
+      }
+    };
+    
+    const response = await fetch(`https://${env.SHOPIFY_STORE_URL}/api/2024-01/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Storefront-Access-Token': env.SHOPIFY_STOREFRONT_ACCESS_TOKEN
+      },
+      body: JSON.stringify({
+        query: checkoutMutation,
+        variables: variables
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.data?.checkoutCreate?.checkout) {
+      return new Response(JSON.stringify({
+        checkoutUrl: data.data.checkoutCreate.checkout.webUrl
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } else {
+      throw new Error('Failed to create checkout');
+    }
+  } catch (error) {
+    return new Response(JSON.stringify({ error: 'Checkout failed' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 }
 
 async function handleProducts(env: Env): Promise<Response> {
@@ -145,4 +209,5 @@ interface Env {
   SHOPIFY_API_KEY: string;
   SHOPIFY_STORE_URL: string;
   SHOPIFY_ACCESS_TOKEN: string;
+  SHOPIFY_STOREFRONT_ACCESS_TOKEN: string;
 }

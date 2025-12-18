@@ -35,9 +35,26 @@ const StorePage: React.FC<StorePageProps> = ({ onNavigateToEmr }) => {
     fetchProducts();
   }, []);
 
-  const handleBuy = (option: PurchaseOption) => {
-    buyItem(option);
-    onNavigateToEmr();
+  const handleBuy = async (product: any) => {
+    try {
+      // Create Shopify checkout
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          variantId: product.variants[0].id,
+          quantity: 1
+        })
+      });
+      
+      const { checkoutUrl } = await response.json();
+      
+      // Redirect to Shopify checkout
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      console.error('Checkout failed:', error);
+      alert('Checkout failed. Please try again.');
+    }
   };
 
   const toggleFaq = (index: number) => {
@@ -117,7 +134,7 @@ const StorePage: React.FC<StorePageProps> = ({ onNavigateToEmr }) => {
                 </div>
                 
                 <button 
-                  onClick={() => handleBuy(PurchaseOption.TEST_ONLY)} // This will need to be updated to handle different products
+                  onClick={() => handleBuy(product)}
                   className="w-full py-3 px-6 rounded-xl border-2 border-brand-blue text-brand-blue font-bold hover:bg-brand-light transition-colors flex items-center justify-center gap-2"
                 >
                   Buy Now <ArrowRight size={18} />
