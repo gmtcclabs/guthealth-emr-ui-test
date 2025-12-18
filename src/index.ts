@@ -7,7 +7,6 @@ export default {
     }
     
     try {
-      // For root path, serve index.html
       if (url.pathname === '/') {
         const indexRequest = new Request(`${url.origin}/index.html`, request);
         return await env.ASSETS.fetch(indexRequest);
@@ -15,7 +14,6 @@ export default {
       
       return await env.ASSETS.fetch(request);
     } catch (e) {
-      // Fallback to index.html for SPA routing
       try {
         const indexRequest = new Request(`${url.origin}/index.html`, request);
         return await env.ASSETS.fetch(indexRequest);
@@ -33,16 +31,24 @@ async function handleAPI(request: Request, env: Env): Promise<Response> {
     return handleOAuthCallback(request, env);
   }
   
-  if (url.pathname === '/webhooks') {
-    return new Response('Webhook received', { status: 200 });
+  if (url.pathname === '/api/webhooks') {
+    return handleWebhooks(request, env);
   }
 
   if (url.pathname === '/api/products') {
     return handleProducts(env);
   }
 
-  if (url.pathname === '/api/checkout') {
-    return handleCheckout(request, env);
+  if (url.pathname === '/api/cart/create') {
+    return handleCartCreate(request, env);
+  }
+
+  if (url.pathname === '/api/orders') {
+    return handleOrders(request, env);
+  }
+
+  if (url.pathname === '/api/customers') {
+    return handleCustomers(request, env);
   }
   
   return new Response('Not found', { status: 404 });
@@ -58,7 +64,6 @@ async function handleOAuthCallback(request: Request, env: Env): Promise<Response
   }
 
   try {
-    // Exchange code for access token
     const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -71,15 +76,13 @@ async function handleOAuthCallback(request: Request, env: Env): Promise<Response
 
     const tokenData = await tokenResponse.json();
     
-    // Store the access token (in production, save to database)
-    // For now, redirect to success page
     return new Response(`
       <html>
-        <body>
-          <h1>App Installed Successfully!</h1>
-          <p>Shop: ${shop}</p>
-          <p>Access Token: ${tokenData.access_token}</p>
-          <a href="https://${shop}/admin/apps">Return to Admin</a>
+        <body style="font-family: Arial; padding: 40px; text-align: center;">
+          <h1>✅ GutHealth EMR App Installed Successfully!</h1>
+          <p><strong>Store:</strong> ${shop}</p>
+          <p>Your app is now connected and ready to process orders.</p>
+          <a href="https://${shop}/admin/apps" style="background: #374C7A; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Return to Admin</a>
         </body>
       </html>
     `, {
@@ -90,30 +93,71 @@ async function handleOAuthCallback(request: Request, env: Env): Promise<Response
   }
 }
 
-async function handleCheckout(request: Request, env: Env): Promise<Response> {
+async function handleWebhooks(request: Request, env: Env): Promise<Response> {
   try {
-    const { productHandle, variantId } = await request.json();
-    const shop = env.SHOPIFY_STORE_URL;
+    const body = await request.text();
+    const topic = request.headers.get('X-Shopify-Topic');
     
-    // Use cart permalink to add product directly to cart
-    const checkoutUrl = `https://${shop}/cart/${variantId}:1`;
+    // Handle different webhook topics
+    switch (topic) {
+      case 'orders/create':
+        return handleOrderCreated(JSON.parse(body), env);
+      case 'orders/updated':
+        return handleOrderUpdated(JSON.parse(body), env);
+      case 'app/uninstalled':
+        return handleAppUninstalled(JSON.parse(body), env);
+      default:
+        console.log(`Unhandled webhook: ${topic}`);
+    }
     
-    return new Response(JSON.stringify({
-      checkoutUrl: checkoutUrl
-    }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response('Webhook processed', { status: 200 });
   } catch (error) {
-    return new Response(JSON.stringify({ error: 'Checkout failed' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response('Webhook failed', { status: 500 });
   }
+}
+
+async function handleOrderCreated(order: any, env: Env): Promise<Response> {
+  // Create EMR record for new order
+  const emrRecord = {
+    orderId: order.id,
+    customerEmail: order.email,
+    customerName: `${order.billing_address?.first_name} ${order.billing_address?.last_name}`,
+    products: order.line_items.map((item: any) => ({
+      name: item.name,
+      sku: item.sku,
+      quantity: item.quantity
+    })),
+    status: 'order_placed',
+    createdAt: new Date().toISOString()
+  };
+  
+  // In production, save to database
+  console.log('EMR Record Created:', emrRecord);
+  
+  return new Response('Order processed', { status: 200 });
+}
+
+async function handleOrderUpdated(order: any, env: Env): Promise<Response> {
+  // Update EMR record based on order status
+  const statusMapping: { [key: string]: string } = {
+    'fulfilled': 'kit_shipped',
+    'delivered': 'kit_received'
+  };
+  
+  const emrStatus = statusMapping[order.fulfillment_status] || order.financial_status;
+  
+  console.log(`Order ${order.id} updated to: ${emrStatus}`);
+  
+  return new Response('Order updated', { status: 200 });
+}
+
+async function handleAppUninstalled(data: any, env: Env): Promise<Response> {
+  console.log('App uninstalled from:', data.domain);
+  return new Response('App uninstalled', { status: 200 });
 }
 
 async function handleProducts(env: Env): Promise<Response> {
   try {
-    // Fetch real products from Shopify Admin API
     const response = await fetch(`https://${env.SHOPIFY_STORE_URL}/admin/api/2024-01/products.json`, {
       headers: {
         'X-Shopify-Access-Token': env.SHOPIFY_ACCESS_TOKEN,
@@ -127,7 +171,6 @@ async function handleProducts(env: Env): Promise<Response> {
 
     const data = await response.json();
     
-    // Transform Shopify products to match frontend interface
     const products = data.products.map((product: any) => ({
       id: product.id.toString(),
       title: product.title,
@@ -144,7 +187,8 @@ async function handleProducts(env: Env): Promise<Response> {
       variants: product.variants.map((variant: any) => ({
         id: variant.id.toString(),
         price: variant.price,
-        compare_at_price: variant.compare_at_price
+        compare_at_price: variant.compare_at_price,
+        available: variant.inventory_quantity > 0
       })),
       images: product.images.map((image: any) => ({
         src: image.src,
@@ -167,11 +211,195 @@ async function handleProducts(env: Env): Promise<Response> {
   }
 }
 
+async function handleCartCreate(request: Request, env: Env): Promise<Response> {
+  try {
+    const { variantId, quantity = 1, customerEmail } = await request.json();
+    
+    // Create cart using Storefront API
+    const cartMutation = `
+      mutation cartCreate($input: CartInput!) {
+        cartCreate(input: $input) {
+          cart {
+            id
+            checkoutUrl
+            totalQuantity
+            cost {
+              totalAmount {
+                amount
+                currencyCode
+              }
+            }
+            lines(first: 10) {
+              edges {
+                node {
+                  id
+                  quantity
+                  merchandise {
+                    ... on ProductVariant {
+                      id
+                      title
+                      product {
+                        title
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `;
+    
+    const variables = {
+      input: {
+        lines: [{
+          merchandiseId: `gid://shopify/ProductVariant/${variantId}`,
+          quantity: quantity
+        }],
+        buyerIdentity: customerEmail ? {
+          email: customerEmail
+        } : undefined
+      }
+    };
+    
+    // For now, use direct cart URL since we need Storefront API token
+    const cartUrl = `https://${env.SHOPIFY_STORE_URL}/cart/${variantId}:${quantity}`;
+    
+    return new Response(JSON.stringify({
+      checkoutUrl: cartUrl,
+      cartId: `temp_${Date.now()}`,
+      totalQuantity: quantity
+    }), {
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: 'Cart creation failed' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+async function handleOrders(request: Request, env: Env): Promise<Response> {
+  try {
+    const url = new URL(request.url);
+    const customerEmail = url.searchParams.get('email');
+    
+    let ordersUrl = `https://${env.SHOPIFY_STORE_URL}/admin/api/2024-01/orders.json?status=any&limit=50`;
+    
+    if (customerEmail) {
+      ordersUrl += `&email=${encodeURIComponent(customerEmail)}`;
+    }
+    
+    const response = await fetch(ordersUrl, {
+      headers: {
+        'X-Shopify-Access-Token': env.SHOPIFY_ACCESS_TOKEN,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Shopify API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    const orders = data.orders.map((order: any) => ({
+      id: order.id,
+      orderNumber: order.order_number,
+      email: order.email,
+      createdAt: order.created_at,
+      financialStatus: order.financial_status,
+      fulfillmentStatus: order.fulfillment_status,
+      totalPrice: order.total_price,
+      currency: order.currency,
+      lineItems: order.line_items.map((item: any) => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        sku: item.sku
+      })),
+      shippingAddress: order.shipping_address,
+      trackingNumbers: order.fulfillments?.map((f: any) => f.tracking_number).filter(Boolean) || []
+    }));
+
+    return new Response(JSON.stringify(orders), {
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: 'Failed to fetch orders' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+async function handleCustomers(request: Request, env: Env): Promise<Response> {
+  try {
+    const url = new URL(request.url);
+    const email = url.searchParams.get('email');
+    
+    if (!email) {
+      return new Response(JSON.stringify({ error: 'Email required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    const response = await fetch(`https://${env.SHOPIFY_STORE_URL}/admin/api/2024-01/customers/search.json?query=email:${encodeURIComponent(email)}`, {
+      headers: {
+        'X-Shopify-Access-Token': env.SHOPIFY_ACCESS_TOKEN,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Shopify API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    const customers = data.customers.map((customer: any) => ({
+      id: customer.id,
+      email: customer.email,
+      firstName: customer.first_name,
+      lastName: customer.last_name,
+      phone: customer.phone,
+      createdAt: customer.created_at,
+      ordersCount: customer.orders_count,
+      totalSpent: customer.total_spent,
+      addresses: customer.addresses
+    }));
+
+    return new Response(JSON.stringify(customers), {
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: 'Failed to fetch customer' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
 interface Env {
   ASSETS: Fetcher;
   SHOPIFY_API_SECRET: string;
   SHOPIFY_API_KEY: string;
   SHOPIFY_STORE_URL: string;
   SHOPIFY_ACCESS_TOKEN: string;
-  SHOPIFY_STOREFRONT_ACCESS_TOKEN: string;
 }

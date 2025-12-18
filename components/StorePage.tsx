@@ -37,18 +37,19 @@ const StorePage: React.FC<StorePageProps> = ({ onNavigateToEmr }) => {
 
   const handleBuy = async (product: any) => {
     try {
-      const response = await fetch('/api/checkout', {
+      const response = await fetch('/api/cart/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          productHandle: product.handle,
-          variantId: product.variants[0].id
+          variantId: product.variants[0].id,
+          quantity: 1,
+          customerEmail: '' // Could collect this from a form
         })
       });
       
       const { checkoutUrl } = await response.json();
       
-      // Redirect to Shopify cart with product added
+      // Redirect to Shopify checkout
       window.location.href = checkoutUrl;
     } catch (error) {
       console.error('Checkout failed:', error);
