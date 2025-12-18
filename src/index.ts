@@ -79,6 +79,7 @@ async function handleOAuthCallback(request: Request, env: Env): Promise<Response
   }
 
   try {
+    // Exchange code for access token
     const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -91,11 +92,55 @@ async function handleOAuthCallback(request: Request, env: Env): Promise<Response
 
     const tokenData = await tokenResponse.json();
     
+    // Get Storefront API access token
+    let storefrontToken = null;
+    try {
+      const storefrontResponse = await fetch(`https://${shop}/admin/api/2024-01/storefront_access_tokens.json`, {
+        method: 'POST',
+        headers: {
+          'X-Shopify-Access-Token': tokenData.access_token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          storefront_access_token: {
+            title: 'GutHealth EMR Storefront Token'
+          }
+        })
+      });
+      
+      if (storefrontResponse.ok) {
+        const storefrontData = await storefrontResponse.json();
+        storefrontToken = storefrontData.storefront_access_token?.access_token;
+      }
+    } catch (error) {
+      console.error('Failed to create Storefront API token:', error);
+    }
+    
     return new Response(`
       <html>
         <body style="font-family: Arial; padding: 40px; text-align: center;">
           <h1>✅ GutHealth EMR App Installed Successfully!</h1>
           <p><strong>Store:</strong> ${shop}</p>
+          <p><strong>Admin API Token:</strong> ${tokenData.access_token}</p>
+          ${storefrontToken ? `<p><strong>Storefront API Token:</strong> ${storefrontToken}</p>` : '<p>⚠️ Storefront API token not created - check app scopes</p>'}
+          
+          <div style="background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 8px; text-align: left;">
+            <h3>🔧 Setup Commands:</h3>
+            <p><strong>1. Set Admin API Token:</strong></p>
+            <code style="background: #333; color: #fff; padding: 8px; display: block; margin: 8px 0;">
+              echo "${tokenData.access_token}" | npx wrangler secret put SHOPIFY_ACCESS_TOKEN
+            </code>
+            
+            ${storefrontToken ? `
+              <p><strong>2. Set Storefront API Token:</strong></p>
+              <code style="background: #333; color: #fff; padding: 8px; display: block; margin: 8px 0;">
+                echo "${storefrontToken}" | npx wrangler secret put SHOPIFY_STOREFRONT_ACCESS_TOKEN
+              </code>
+            ` : `
+              <p><strong>2. Storefront API Token:</strong> Not available - check app configuration</p>
+            `}
+          </div>
+          
           <p>Your app is now connected and ready to process orders.</p>
           <a href="https://${shop}/admin/apps" style="background: #374C7A; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Return to Admin</a>
         </body>
@@ -104,7 +149,7 @@ async function handleOAuthCallback(request: Request, env: Env): Promise<Response
       headers: { 'Content-Type': 'text/html' }
     });
   } catch (error) {
-    return new Response('OAuth failed', { status: 500 });
+    return new Response(`OAuth failed: ${error.message}`, { status: 500 });
   }
 }
 
