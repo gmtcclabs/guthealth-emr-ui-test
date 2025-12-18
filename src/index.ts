@@ -215,8 +215,8 @@ async function handleCartCreate(request: Request, env: Env): Promise<Response> {
   try {
     const { variantId, quantity = 1 } = await request.json();
     
-    // Use direct cart URL with correct store domain
-    const cartUrl = `https://${env.SHOPIFY_STORE_URL}/cart/${variantId}:${quantity}`;
+    // Use correct Shopify store domain, not the custom domain
+    const cartUrl = `https://testing-1234563457896534798625436789983.myshopify.com/cart/${variantId}:${quantity}`;
     
     return new Response(JSON.stringify({
       checkoutUrl: cartUrl,
