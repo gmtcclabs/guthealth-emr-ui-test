@@ -1,20 +1,27 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 
-// Simple debug component
-const DebugApp = () => {
-  return (
+// Import components with error handling
+let App;
+try {
+  App = require('../App').default;
+} catch (error) {
+  console.error('Failed to load App component:', error);
+  App = () => (
     <div style={{ padding: '20px', fontFamily: 'Arial' }}>
-      <h1>Debug App - React is Working!</h1>
-      <p>If you see this, React is loading correctly.</p>
-      <button onClick={() => alert('Button works!')}>Test Button</button>
+      <h1>App Loading Error</h1>
+      <p>Error: {error.message}</p>
     </div>
   );
-};
+}
 
 const root = document.getElementById('root');
 if (root) {
-  ReactDOM.createRoot(root).render(<DebugApp />);
+  ReactDOM.createRoot(root).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
 } else {
   console.error('Root element not found');
 }
