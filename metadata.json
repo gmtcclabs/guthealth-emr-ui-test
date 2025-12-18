@@ -1,0 +1,5 @@
+{
+  "name": "GutHealth EMR Portal",
+  "description": "A comprehensive Shopify-to-EMR simulated flow for gut health testing, consultation scheduling, and AI-powered result interpretation.",
+  "requestFramePermissions": []
+}
