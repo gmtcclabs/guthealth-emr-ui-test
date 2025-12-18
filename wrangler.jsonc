@@ -7,11 +7,5 @@
   },
   "assets": {
     "directory": "./dist"
-  },
-  "routes": [
-    {
-      "pattern": "gmtccinsights.store/*",
-      "custom_domain": true
-    }
-  ]
+  }
 }
