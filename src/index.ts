@@ -6,6 +6,11 @@ export default {
       return handleAPI(request, env);
     }
     
+    // Handle cart URLs
+    if (url.pathname.startsWith('/cart/')) {
+      return handleCartRedirect(url, env);
+    }
+    
     try {
       if (url.pathname === '/') {
         const indexRequest = new Request(`${url.origin}/index.html`, request);
@@ -23,6 +28,16 @@ export default {
     }
   },
 };
+
+async function handleCartRedirect(url: URL, env: Env): Promise<Response> {
+  // Extract variant ID and quantity from path like /cart/47227197325538:1
+  const cartPath = url.pathname.replace('/cart/', '');
+  
+  // Redirect to actual Shopify store cart
+  const shopifyCartUrl = `https://testing-1234563457896534798625436789983.myshopify.com/cart/${cartPath}`;
+  
+  return Response.redirect(shopifyCartUrl, 302);
+}
 
 async function handleAPI(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
@@ -215,8 +230,8 @@ async function handleCartCreate(request: Request, env: Env): Promise<Response> {
   try {
     const { variantId, quantity = 1 } = await request.json();
     
-    // Use correct Shopify store domain, not the custom domain
-    const cartUrl = `https://testing-1234563457896534798625436789983.myshopify.com/cart/${variantId}:${quantity}`;
+    // Use our custom domain so the Worker handles the cart redirect
+    const cartUrl = `https://guthealth-emr-ui-test.gmtcc2025.workers.dev/cart/${variantId}:${quantity}`;
     
     return new Response(JSON.stringify({
       checkoutUrl: cartUrl,
