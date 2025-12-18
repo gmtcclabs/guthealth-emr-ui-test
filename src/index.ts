@@ -230,79 +230,99 @@ async function handleCartCreate(request: Request, env: Env): Promise<Response> {
   try {
     const { variantId, quantity = 1 } = await request.json();
     
-    // Use Storefront API to create cart with checkoutUrl
-    const cartMutation = `
-      mutation cartCreate($input: CartInput!) {
-        cartCreate(input: $input) {
-          cart {
-            id
-            checkoutUrl
-            totalQuantity
-            cost {
-              totalAmount {
-                amount
-                currencyCode
+    // Check if we have Storefront API token
+    if (env.SHOPIFY_STOREFRONT_ACCESS_TOKEN && env.SHOPIFY_STOREFRONT_ACCESS_TOKEN !== 'your-storefront-access-token-here') {
+      // Use Storefront API to create cart with checkoutUrl
+      const cartMutation = `
+        mutation cartCreate($input: CartInput!) {
+          cartCreate(input: $input) {
+            cart {
+              id
+              checkoutUrl
+              totalQuantity
+              cost {
+                totalAmount {
+                  amount
+                  currencyCode
+                }
               }
             }
-          }
-          userErrors {
-            field
-            message
+            userErrors {
+              field
+              message
+            }
           }
         }
-      }
-    `;
-    
-    const variables = {
-      input: {
-        lines: [{
-          merchandiseId: `gid://shopify/ProductVariant/${variantId}`,
-          quantity: quantity
-        }]
-      }
-    };
-    
-    const response = await fetch(`https://${env.SHOPIFY_STORE_URL}/api/2024-01/graphql.json`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Storefront-Access-Token': env.SHOPIFY_STOREFRONT_ACCESS_TOKEN
-      },
-      body: JSON.stringify({
-        query: cartMutation,
-        variables: variables
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Storefront API error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (data.data?.cartCreate?.cart?.checkoutUrl) {
-      return new Response(JSON.stringify({
-        checkoutUrl: data.data.cartCreate.cart.checkoutUrl,
-        cartId: data.data.cartCreate.cart.id,
-        totalQuantity: data.data.cartCreate.cart.totalQuantity
-      }), {
-        headers: { 
+      `;
+      
+      const variables = {
+        input: {
+          lines: [{
+            merchandiseId: `gid://shopify/ProductVariant/${variantId}`,
+            quantity: quantity
+          }]
+        }
+      };
+      
+      const response = await fetch(`https://${env.SHOPIFY_STORE_URL}/api/2024-01/graphql.json`, {
+        method: 'POST',
+        headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
+          'X-Shopify-Storefront-Access-Token': env.SHOPIFY_STOREFRONT_ACCESS_TOKEN
+        },
+        body: JSON.stringify({
+          query: cartMutation,
+          variables: variables
+        })
       });
-    } else {
-      const errors = data.data?.cartCreate?.userErrors || data.errors || [];
-      throw new Error(`Cart creation failed: ${JSON.stringify(errors)}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.data?.cartCreate?.cart?.checkoutUrl) {
+          return new Response(JSON.stringify({
+            checkoutUrl: data.data.cartCreate.cart.checkoutUrl,
+            cartId: data.data.cartCreate.cart.id,
+            totalQuantity: data.data.cartCreate.cart.totalQuantity
+          }), {
+            headers: { 
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+      }
     }
+    
+    // Fallback: Use direct cart URL
+    const cartUrl = `https://${env.SHOPIFY_STORE_URL}/cart/${variantId}:${quantity}`;
+    
+    return new Response(JSON.stringify({
+      checkoutUrl: cartUrl,
+      cartId: `fallback_${Date.now()}`,
+      totalQuantity: quantity
+    }), {
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
   } catch (error) {
     console.error('Cart creation error:', error);
-    return new Response(JSON.stringify({ 
-      error: 'Cart creation failed',
-      details: error.message 
+    
+    // Final fallback
+    const { variantId, quantity = 1 } = await request.json();
+    const cartUrl = `https://${env.SHOPIFY_STORE_URL}/cart/${variantId}:${quantity}`;
+    
+    return new Response(JSON.stringify({
+      checkoutUrl: cartUrl,
+      cartId: `error_fallback_${Date.now()}`,
+      totalQuantity: quantity
     }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
     });
   }
 }
