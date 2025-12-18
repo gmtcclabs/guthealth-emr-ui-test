@@ -7,9 +7,21 @@ export default {
     }
     
     try {
+      // For root path, serve index.html
+      if (url.pathname === '/') {
+        const indexRequest = new Request(`${url.origin}/index.html`, request);
+        return await env.ASSETS.fetch(indexRequest);
+      }
+      
       return await env.ASSETS.fetch(request);
     } catch (e) {
-      return new Response('Not found', { status: 404 });
+      // Fallback to index.html for SPA routing
+      try {
+        const indexRequest = new Request(`${url.origin}/index.html`, request);
+        return await env.ASSETS.fetch(indexRequest);
+      } catch (fallbackError) {
+        return new Response('Not found', { status: 404 });
+      }
     }
   },
 };
