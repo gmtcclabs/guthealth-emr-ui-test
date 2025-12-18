@@ -1,12 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from '../App';
+import SimpleApp from '../SimpleApp';
 
 const root = document.getElementById('root');
 if (root) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      <App />
+      <SimpleApp />
     </React.StrictMode>
   );
 } else {
