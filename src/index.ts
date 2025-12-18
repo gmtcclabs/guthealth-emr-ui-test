@@ -1,5 +1,8 @@
+import { gql } from 'graphql-request';
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    console.log(`[Worker] Request: ${request.method} ${request.url}`);
     const url = new URL(request.url);
     
     if (url.pathname.startsWith('/api/')) {
@@ -34,7 +37,7 @@ async function handleCartRedirect(url: URL, env: Env): Promise<Response> {
   const cartPath = url.pathname.replace('/cart/', '');
   
   // Redirect to actual Shopify store cart
-  const shopifyCartUrl = `https://testing-1234563457896534798625436789983.myshopify.com/cart/${cartPath}`;
+  const shopifyCartUrl = `https://${env.SHOPIFY_STORE_DOMAIN}/cart/${cartPath}`;
   
   return Response.redirect(shopifyCartUrl, 302);
 }
@@ -95,7 +98,7 @@ async function handleOAuthCallback(request: Request, env: Env): Promise<Response
     // Get Storefront API access token
     let storefrontToken = null;
     try {
-      const storefrontResponse = await fetch(`https://${shop}/admin/api/2024-01/storefront_access_tokens.json`, {
+      const storefrontResponse = await fetch(`https://${shop}/admin/api/2024-04/storefront_access_tokens.json`, {
         method: 'POST',
         headers: {
           'X-Shopify-Access-Token': tokenData.access_token,
@@ -217,42 +220,75 @@ async function handleAppUninstalled(data: any, env: Env): Promise<Response> {
 }
 
 async function handleProducts(env: Env): Promise<Response> {
-  try {
-    const response = await fetch(`https://${env.SHOPIFY_STORE_URL}/admin/api/2024-01/products.json`, {
-      headers: {
-        'X-Shopify-Access-Token': env.SHOPIFY_ACCESS_TOKEN,
-        'Content-Type': 'application/json'
+  const query = gql`
+    {
+      products(first: 10) {
+        edges {
+          node {
+            id
+            title
+            handle
+            description
+            images(first: 1) {
+              edges {
+                node {
+                  src
+                  altText
+                }
+              }
+            }
+            priceRange {
+              minVariantPrice {
+                amount
+                currencyCode
+              }
+            }
+            variants(first: 1) {
+              edges {
+                node {
+                  id
+                  price {
+                    amount
+                    currencyCode
+                  }
+                  compareAtPrice {
+                    amount
+                    currencyCode
+                  }
+                  availableForSale
+                }
+              }
+            }
+          }
+        }
       }
+    }
+  `;
+
+  try {
+    const response = await fetch(`https://${env.SHOPIFY_STORE_DOMAIN}/api/2024-04/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'X-Shopify-Storefront-Access-Token': env.SHOPIFY_STOREFRONT_ACCESS_TOKEN,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ query })
     });
 
     if (!response.ok) {
-      throw new Error(`Shopify API error: ${response.status}`);
+      const text = await response.text();
+      throw new Error(`Shopify API error: ${response.status} ${text}`);
     }
 
-    const data = await response.json();
-    
-    const products = data.products.map((product: any) => ({
-      id: product.id.toString(),
-      title: product.title,
-      handle: product.handle,
-      description: product.body_html?.replace(/<[^>]*>/g, '') || '',
-      vendor: product.vendor,
-      product_type: product.product_type,
-      priceRange: {
-        minVariantPrice: {
-          amount: `HKD ${product.variants[0]?.price || '0.00'}`,
-          currencyCode: "HKD"
-        }
-      },
-      variants: product.variants.map((variant: any) => ({
-        id: variant.id.toString(),
-        price: variant.price,
-        compare_at_price: variant.compare_at_price,
-        available: variant.inventory_quantity > 0
-      })),
-      images: product.images.map((image: any) => ({
-        src: image.src,
-        alt: image.alt
+    const json = await response.json();
+    const products = json.data.products.edges.map((edge: any) => ({
+      ...edge.node,
+      // Flatten the nested variants and price for easier frontend consumption
+      variants: edge.node.variants.edges.map((variantEdge: any) => ({
+        id: variantEdge.node.id,
+        price: variantEdge.node.price.amount,
+        compare_at_price: variantEdge.node.compareAtPrice?.amount,
+        available: variantEdge.node.availableForSale,
       }))
     }));
 
@@ -272,98 +308,71 @@ async function handleProducts(env: Env): Promise<Response> {
 }
 
 async function handleCartCreate(request: Request, env: Env): Promise<Response> {
-  try {
-    const { variantId, quantity = 1 } = await request.json();
-    
-    // Check if we have Storefront API token
-    if (env.SHOPIFY_STOREFRONT_ACCESS_TOKEN && env.SHOPIFY_STOREFRONT_ACCESS_TOKEN !== 'your-storefront-access-token-here') {
-      // Use Storefront API to create cart with checkoutUrl
-      const cartMutation = `
-        mutation cartCreate($input: CartInput!) {
-          cartCreate(input: $input) {
-            cart {
-              id
-              checkoutUrl
-              totalQuantity
-              cost {
-                totalAmount {
-                  amount
-                  currencyCode
-                }
-              }
-            }
-            userErrors {
-              field
-              message
-            }
-          }
+  const { variantId, quantity = 1 } = await request.json();
+
+  const cartCreateMutation = gql`
+    mutation cartCreate($input: CartInput!) {
+      cartCreate(input: $input) {
+        cart {
+          id
+          checkoutUrl
         }
-      `;
-      
-      const variables = {
-        input: {
-          lines: [{
-            merchandiseId: `gid://shopify/ProductVariant/${variantId}`,
-            quantity: quantity
-          }]
-        }
-      };
-      
-      const response = await fetch(`https://${env.SHOPIFY_STORE_URL}/api/2024-01/graphql.json`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Shopify-Storefront-Access-Token': env.SHOPIFY_STOREFRONT_ACCESS_TOKEN
-        },
-        body: JSON.stringify({
-          query: cartMutation,
-          variables: variables
-        })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data.data?.cartCreate?.cart?.checkoutUrl) {
-          return new Response(JSON.stringify({
-            checkoutUrl: data.data.cartCreate.cart.checkoutUrl,
-            cartId: data.data.cartCreate.cart.id,
-            totalQuantity: data.data.cartCreate.cart.totalQuantity
-          }), {
-            headers: { 
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          });
+        userErrors {
+          field
+          message
         }
       }
     }
+  `;
+
+  const variables = {
+    input: {
+      lines: [
+        {
+          merchandiseId: variantId,
+          quantity: quantity,
+        },
+      ],
+    },
+  };
+
+  try {
+    const response = await fetch(`https://${env.SHOPIFY_STORE_DOMAIN}/api/2024-04/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'X-Shopify-Storefront-Access-Token': env.SHOPIFY_STOREFRONT_ACCESS_TOKEN,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        query: cartCreateMutation,
+        variables: variables
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.errors) {
+      console.error('Shopify cartCreate mutation errors:', JSON.stringify(data.errors, null, 2));
+      throw new Error(data.errors.map((e: any) => e.message).join(', '));
+    }
     
-    // Fallback: Use direct cart URL
-    const cartUrl = `https://${env.SHOPIFY_STORE_URL}/cart/${variantId}:${quantity}`;
-    
-    return new Response(JSON.stringify({
-      checkoutUrl: cartUrl,
-      cartId: `fallback_${Date.now()}`,
-      totalQuantity: quantity
-    }), {
-      headers: { 
+    if (data.data.cartCreate.userErrors.length > 0) {
+      console.error('Shopify cartCreate mutation userErrors:', JSON.stringify(data.data.cartCreate.userErrors, null, 2));
+      throw new Error(data.data.cartCreate.userErrors.map((e: any) => e.message).join(', '));
+    }
+
+    const checkoutUrl = data.data.cartCreate.cart.checkoutUrl;
+
+    return new Response(JSON.stringify({ checkoutUrl }), {
+      headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
       }
     });
   } catch (error) {
     console.error('Cart creation error:', error);
-    
-    // Final fallback
-    const { variantId, quantity = 1 } = await request.json();
-    const cartUrl = `https://${env.SHOPIFY_STORE_URL}/cart/${variantId}:${quantity}`;
-    
-    return new Response(JSON.stringify({
-      checkoutUrl: cartUrl,
-      cartId: `error_fallback_${Date.now()}`,
-      totalQuantity: quantity
-    }), {
+    return new Response(JSON.stringify({ error: `Failed to create cart: ${error.message}` }), {
+      status: 500,
       headers: { 
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
@@ -372,12 +381,13 @@ async function handleCartCreate(request: Request, env: Env): Promise<Response> {
   }
 }
 
+
 async function handleOrders(request: Request, env: Env): Promise<Response> {
   try {
     const url = new URL(request.url);
     const customerEmail = url.searchParams.get('email');
     
-    let ordersUrl = `https://${env.SHOPIFY_STORE_URL}/admin/api/2024-01/orders.json?status=any&limit=50`;
+    let ordersUrl = `https://${env.SHOPIFY_STORE_DOMAIN}/admin/api/2024-04/orders.json?status=any&limit=50`;
     
     if (customerEmail) {
       ordersUrl += `&email=${encodeURIComponent(customerEmail)}`;
@@ -441,7 +451,7 @@ async function handleCustomers(request: Request, env: Env): Promise<Response> {
       });
     }
     
-    const response = await fetch(`https://${env.SHOPIFY_STORE_URL}/admin/api/2024-01/customers/search.json?query=email:${encodeURIComponent(email)}`, {
+    const response = await fetch(`https://${env.SHOPIFY_STORE_DOMAIN}/admin/api/2024-04/customers/search.json?query=email:${encodeURIComponent(email)}`, {
       headers: {
         'X-Shopify-Access-Token': env.SHOPIFY_ACCESS_TOKEN,
         'Content-Type': 'application/json'
@@ -484,7 +494,7 @@ interface Env {
   ASSETS: Fetcher;
   SHOPIFY_API_SECRET: string;
   SHOPIFY_API_KEY: string;
-  SHOPIFY_STORE_URL: string;
+  SHOPIFY_STORE_DOMAIN: string;
   SHOPIFY_ACCESS_TOKEN: string;
   SHOPIFY_STOREFRONT_ACCESS_TOKEN: string;
 }

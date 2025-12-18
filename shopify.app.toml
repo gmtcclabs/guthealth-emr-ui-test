@@ -3,9 +3,11 @@ client_id = "31b2854e12a0b18176b566aaf2655135"
 application_url = "https://guthealth-emr-ui-test.gmtcc2025.workers.dev"
 embedded = true
 
+[capabilities]
+channels = true
+
 [access_scopes]
-scopes = "read_products,write_products,read_orders,read_customers"
-optional_scopes = ["unauthenticated_read_product_listings", "unauthenticated_write_checkouts"]
+scopes = "read_products,write_products,read_orders,read_customers,unauthenticated_write_checkouts,unauthenticated_read_checkouts,unauthenticated_write_customers,unauthenticated_read_customers,unauthenticated_read_product_listings"
 
 [auth]
 redirect_urls = [
@@ -14,7 +16,7 @@ redirect_urls = [
 ]
 
 [webhooks]
-api_version = "2024-01"
+api_version = "2024-04"
 
 [[webhooks.subscriptions]]
 topics = ["app/uninstalled", "orders/create", "orders/updated", "orders/fulfilled"]
@@ -26,3 +28,8 @@ uri = "/api/webhooks"
 
 [build]
 automatically_update_urls_on_dev = true
+
+[app_proxy]
+url = "https://guthealth-emr-ui-test.gmtcc2025.workers.dev/proxy"
+subpath = "apps"
+prefix = "apps"

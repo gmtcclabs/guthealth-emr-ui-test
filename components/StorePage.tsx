@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useStore } from '../storeContext';
-import { PurchaseOption } from '../types';
-import { getProducts, ShopifyProduct } from '../services/shopifyService';
+import { PurchaseOption, ShopifyProduct } from '../types';
 import { Check, ArrowRight, ShieldCheck, Zap, Star, Search, Activity, ArrowUpCircle, Flame, CheckCircle, MapPin, Mail, PlayCircle, Mic, Users, Microscope, Youtube, Plus, Minus } from 'lucide-react';
 
 interface StorePageProps {
@@ -9,7 +7,6 @@ interface StorePageProps {
 }
 
 const StorePage: React.FC<StorePageProps> = ({ onNavigateToEmr }) => {
-  const { buyItem } = useStore();
   const [products, setProducts] = useState<ShopifyProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +16,6 @@ const StorePage: React.FC<StorePageProps> = ({ onNavigateToEmr }) => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        // Fetch from our Worker API instead of external service
         const response = await fetch('/api/products');
         const products = await response.json();
         setProducts(products);
@@ -37,28 +33,24 @@ const StorePage: React.FC<StorePageProps> = ({ onNavigateToEmr }) => {
 
   const handleBuy = async (product: any) => {
     try {
+      setLoading(true);
       const response = await fetch('/api/cart/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          variantId: product.variants[0].id,
-          quantity: 1
-        })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ variantId: product.variants[0].id }),
       });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
       const data = await response.json();
-      
-      // Redirect to Shopify checkout
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create cart.');
+      }
       window.location.href = data.checkoutUrl;
     } catch (error) {
-      console.error('Checkout failed:', error);
-      // Fallback to direct Shopify store
-      const fallbackUrl = `https://testing-1234563457896534798625436789983.myshopify.com/cart/${product.variants[0].id}:1`;
-      window.location.href = fallbackUrl;
+      console.error('Failed to create cart:', error);
+      alert(`Error: Could not initiate checkout. \n${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -106,7 +98,8 @@ const StorePage: React.FC<StorePageProps> = ({ onNavigateToEmr }) => {
              <Microscope size={16} /> Research-Driven Precision Wellness
           </div>
           <h1 className="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight leading-tight text-brand-black">
-            Deciphering your <span className="text-brand-blue">microbiome</span> to illuminate your health.
+            The Gut Health Blueprint:<br />
+            <span className="text-brand-blue">Clinical Data Meets Personalized, Ongoing Care.</span>
           </h1>
           <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto font-light leading-relaxed">
             We operate at the intersection of microbiology and functional wellness. Start with the gut to build your tailor-made roadmap.
