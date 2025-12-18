@@ -180,8 +180,8 @@ async function handleProducts(env: Env): Promise<Response> {
       product_type: product.product_type,
       priceRange: {
         minVariantPrice: {
-          amount: `$${product.variants[0]?.price || '0.00'}`,
-          currencyCode: "USD"
+          amount: `HKD ${product.variants[0]?.price || '0.00'}`,
+          currencyCode: "HKD"
         }
       },
       variants: product.variants.map((variant: any) => ({
