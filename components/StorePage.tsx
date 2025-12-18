@@ -37,24 +37,22 @@ const StorePage: React.FC<StorePageProps> = ({ onNavigateToEmr }) => {
 
   const handleBuy = async (product: any) => {
     try {
-      // For public apps, redirect to product page for now
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          productHandle: product.handle
+          productHandle: product.handle,
+          variantId: product.variants[0].id
         })
       });
       
       const { checkoutUrl } = await response.json();
       
-      // Redirect to Shopify product page
+      // Redirect to Shopify cart with product added
       window.location.href = checkoutUrl;
     } catch (error) {
       console.error('Checkout failed:', error);
-      alert('Redirecting to product page...');
-      // Fallback direct redirect
-      window.location.href = `https://testing-1234563457896534798625436789983.myshopify.com/products/${product.handle}`;
+      alert('Checkout failed. Please try again.');
     }
   };
 

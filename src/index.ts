@@ -91,14 +91,15 @@ async function handleOAuthCallback(request: Request, env: Env): Promise<Response
 }
 
 async function handleCheckout(request: Request, env: Env): Promise<Response> {
-  // For public apps, you'd need the shop's access token from OAuth
-  // For now, return a simple redirect to the product page
   try {
-    const { productHandle } = await request.json();
-    const shop = 'testing-1234563457896534798625436789983.myshopify.com';
+    const { productHandle, variantId } = await request.json();
+    const shop = env.SHOPIFY_STORE_URL;
+    
+    // Use cart permalink to add product directly to cart
+    const checkoutUrl = `https://${shop}/cart/${variantId}:1`;
     
     return new Response(JSON.stringify({
-      checkoutUrl: `https://${shop}/products/${productHandle}`
+      checkoutUrl: checkoutUrl
     }), {
       headers: { 'Content-Type': 'application/json' }
     });
