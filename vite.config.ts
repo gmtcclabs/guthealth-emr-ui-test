@@ -18,10 +18,10 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.SHOPIFY_STORE_DOMAIN': JSON.stringify(env.SHOPIFY_STORE_DOMAIN),
-        'process.env.SHOPIFY_STOREFRONT_API_TOKEN': JSON.stringify(env.SHOPIFY_STOREFRONT_API_TOKEN),
+        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
+        'process.env.SHOPIFY_STORE_DOMAIN': JSON.stringify(env.SHOPIFY_STORE_DOMAIN || 'testing-1234563457896534798625436789983.myshopify.com'),
+        'process.env.SHOPIFY_STOREFRONT_API_TOKEN': JSON.stringify(env.SHOPIFY_STOREFRONT_API_TOKEN || ''),
       },
       resolve: {
         alias: {

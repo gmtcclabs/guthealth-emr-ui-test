@@ -19,8 +19,10 @@ const StorePage: React.FC<StorePageProps> = ({ onNavigateToEmr }) => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const fetchedProducts = await getProducts();
-        setProducts(fetchedProducts);
+        // Fetch from our Worker API instead of external service
+        const response = await fetch('/api/products');
+        const products = await response.json();
+        setProducts(products);
         setError(null);
       } catch (err) {
         setError('Failed to fetch products. Please try again later.');
