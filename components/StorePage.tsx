@@ -116,34 +116,133 @@ const StorePage: React.FC<StorePageProps> = ({ onNavigateToEmr }) => {
 
       {/* Pricing Section (Overlapping Hero) */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-32 relative z-20 pb-20">
-        {loading && <p>Loading products...</p>}
-        {error && <p className="text-red-500">{error}</p>}
+        {loading && <p className="text-center text-gray-600">Loading products...</p>}
+        {error && <p className="text-red-500 text-center">{error}</p>}
         {!loading && !error && (
-          <div className="grid md:grid-cols-2 gap-6 items-start">
-            {products.map((product) => (
-              <div key={product.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 flex flex-col hover:border-brand-blue/30 transition-all group h-full">
+          <div className="grid md:grid-cols-2 gap-8 items-start">
+            {products.map((product, index) => (
+              <div key={product.id} className={`bg-white rounded-2xl shadow-lg border ${index === 1 ? 'border-brand-blue ring-2 ring-brand-blue ring-opacity-50' : 'border-gray-100'} p-8 flex flex-col hover:border-brand-blue/30 transition-all group h-full relative`}>
+                
+                {/* Most Popular Badge for Option B */}
+                {index === 1 && (
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <span className="bg-brand-blue text-white px-4 py-2 rounded-full text-sm font-bold">
+                      Most Popular
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2 mb-4">
                   <div className="p-2 bg-brand-light rounded-lg text-brand-blue group-hover:bg-brand-blue group-hover:text-white transition-colors">
                     <Search size={24} />
                   </div>
+                  <span className="text-sm font-bold text-gray-500">
+                    Option {index === 0 ? 'A' : 'B'}
+                  </span>
                 </div>
                 
                 <div className="text-2xl font-bold text-brand-black mb-2">{product.title}</div>
                 
-                <p className="text-gray-600 mb-8 min-h-[60px] leading-relaxed">
+                {index === 0 && (
+                  <div className="text-lg text-gray-600 mb-4 font-medium">Understand Your Body</div>
+                )}
+                
+                {index === 1 && (
+                  <>
+                    <div className="text-lg text-gray-600 mb-2 font-medium">Complete Action Plan + 1-on-1 Strategy Call</div>
+                    <div className="text-sm text-gray-500 mb-4">(92% of customers choose this path)</div>
+                  </>
+                )}
+                
+                <p className="text-gray-600 mb-6 leading-relaxed">
                   {product.description}
                 </p>
                 
-                <div className="text-4xl font-bold text-brand-black mb-8">
-                  {product.priceRange.minVariantPrice.amount} {product.priceRange.minVariantPrice.currencyCode}
+                {/* Pricing */}
+                <div className="mb-6">
+                  {product.variants[0]?.compare_at_price && index === 1 && (
+                    <>
+                      <div className="text-lg text-gray-400 line-through mb-1">
+                        HKD {product.variants[0].compare_at_price}
+                      </div>
+                      <div className="text-4xl font-bold text-brand-black mb-2">
+                        HKD {product.variants[0].price}
+                      </div>
+                      <div className="text-sm bg-red-100 text-red-800 px-3 py-1 rounded-full inline-block">
+                        Year End Special Offer
+                      </div>
+                    </>
+                  )}
+                  {(!product.variants[0]?.compare_at_price || index === 0) && (
+                    <div className="text-4xl font-bold text-brand-black">
+                      HKD {product.variants[0]?.price}
+                    </div>
+                  )}
+                </div>
+
+                {/* Features List */}
+                <div className="mb-8 space-y-3 flex-grow">
+                  {index === 0 && (
+                    <>
+                      <div className="flex items-start gap-3">
+                        <CheckCircle size={20} className="text-green-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-gray-700">At-home microbiome collection kit</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <CheckCircle size={20} className="text-green-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-gray-700">Advanced 16S rRNA lab analysis from a clinically-trusted laboratory</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <CheckCircle size={20} className="text-green-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-gray-700">Personalized GMT Microbiome Report</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <CheckCircle size={20} className="text-green-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-gray-700">Upgrade to Option B (Complete Action Plan) anytime</span>
+                      </div>
+                    </>
+                  )}
+                  
+                  {index === 1 && (
+                    <>
+                      <div className="text-sm font-bold text-gray-700 mb-2">Everything in Gut Discovery Kit</div>
+                      <div className="text-sm text-gray-600 mb-4">Kit + Lab Analysis + Report</div>
+                      <div className="text-sm font-bold text-gray-700 mb-2">PLUS</div>
+                      <div className="flex items-start gap-3">
+                        <CheckCircle size={20} className="text-green-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-gray-700">20-min Personalized Consultation (Video/Phone)</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <CheckCircle size={20} className="text-green-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-gray-700">Complimentary 20-min BRT Check</span>
+                      </div>
+                      <div className="text-sm text-gray-600 mt-2 italic">
+                        We use German bio-resonance technology to verify your results and confirm your personalized probiotic protocol to ensure the best solution for your body.
+                      </div>
+                    </>
+                  )}
                 </div>
                 
                 <button 
                   onClick={() => handleBuy(product)}
-                  className="w-full py-3 px-6 rounded-xl border-2 border-brand-blue text-brand-blue font-bold hover:bg-brand-light transition-colors flex items-center justify-center gap-2"
+                  className={`w-full py-4 px-6 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 ${
+                    index === 1 
+                      ? 'bg-brand-blue text-white hover:bg-brand-blue/90' 
+                      : 'border-2 border-brand-blue text-brand-blue hover:bg-brand-light'
+                  }`}
                 >
-                  Buy Now <ArrowRight size={18} />
+                  {index === 0 ? `Get My Gut Report – HKD ${product.variants[0]?.price}` : 'Yes! I want the Complete Action Plan'}
+                  {index === 1 && product.variants[0]?.compare_at_price && (
+                    <span className="text-sm">(Save HKD {(parseFloat(product.variants[0].compare_at_price) - parseFloat(product.variants[0].price)).toFixed(0)})</span>
+                  )}
+                  <ArrowRight size={18} />
                 </button>
+                
+                {index === 1 && (
+                  <div className="text-xs text-gray-500 mt-2 text-center">
+                    Includes priority shipping & processing
+                  </div>
+                )}
               </div>
             ))}
           </div>
