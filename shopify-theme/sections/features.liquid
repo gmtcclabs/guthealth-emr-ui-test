@@ -1,0 +1,81 @@
+<section class="features">
+  <div class="container">
+    <h2>{{ section.settings.title }}</h2>
+    <p class="features-subtitle">{{ section.settings.subtitle }}</p>
+    
+    <div class="features-grid">
+      {% for block in section.blocks %}
+        <div class="feature-card">
+          <h3>{{ block.settings.title }}</h3>
+          <p>{{ block.settings.description }}</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Features",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Title",
+      "default": "Why Choose GMTCC Insight?"
+    },
+    {
+      "type": "textarea",
+      "id": "subtitle",
+      "label": "Subtitle",
+      "default": "Advanced microbiome analysis with personalized recommendations for optimal gut health."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "feature",
+      "name": "Feature",
+      "settings": [
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title"
+        },
+        {
+          "type": "textarea",
+          "id": "description",
+          "label": "Description"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Features",
+      "blocks": [
+        {
+          "type": "feature",
+          "settings": {
+            "title": "Comprehensive Analysis",
+            "description": "Deep dive into your gut microbiome with advanced sequencing technology and detailed reporting."
+          }
+        },
+        {
+          "type": "feature",
+          "settings": {
+            "title": "Personalized Insights",
+            "description": "Receive tailored recommendations based on your unique microbiome profile and health goals."
+          }
+        },
+        {
+          "type": "feature",
+          "settings": {
+            "title": "Expert Support",
+            "description": "Access to healthcare professionals and ongoing support throughout your wellness journey."
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

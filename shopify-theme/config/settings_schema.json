@@ -1,0 +1,45 @@
+[
+  {
+    "name": "theme_info",
+    "theme_name": "GMTCC Insight",
+    "theme_version": "1.0.0",
+    "theme_author": "GMTCC",
+    "theme_documentation_url": "",
+    "theme_support_url": ""
+  },
+  {
+    "name": "Colors",
+    "settings": [
+      {
+        "type": "color",
+        "id": "brand_blue",
+        "label": "Brand Blue",
+        "default": "#374C7A"
+      },
+      {
+        "type": "color",
+        "id": "brand_light_green",
+        "label": "Brand Light Green",
+        "default": "#EAEFEB"
+      },
+      {
+        "type": "color",
+        "id": "brand_luminous",
+        "label": "Brand Luminous",
+        "default": "#EBFDC1"
+      },
+      {
+        "type": "color",
+        "id": "brand_black",
+        "label": "Brand Black",
+        "default": "#191919"
+      },
+      {
+        "type": "color",
+        "id": "brand_off_white",
+        "label": "Brand Off White",
+        "default": "#F5F5F5"
+      }
+    ]
+  }
+]

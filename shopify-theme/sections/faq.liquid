@@ -1,0 +1,73 @@
+<div class="bg-white py-16 px-4 border-t border-gray-100">
+  <div class="max-w-3xl mx-auto">
+    <h2 class="text-3xl font-bold text-center text-brand-black mb-12">Frequently Asked Questions</h2>
+    <div class="space-y-4" x-data="{ openFaqIndex: null }">
+      {%- for block in section.blocks -%}
+        <div class="border border-gray-200 rounded-xl overflow-hidden">
+          <button
+            @click="openFaqIndex = openFaqIndex === {{ forloop.index }} ? null : {{ forloop.index }}"
+            class="w-full flex items-center justify-between p-6 text-left hover:bg-gray-50 transition-colors"
+          >
+            <span class="font-bold text-lg" :class="{ 'text-brand-blue': openFaqIndex === {{ forloop.index }}, 'text-gray-800': openFaqIndex !== {{ forloop.index }} }">
+              {{ block.settings.question }}
+            </span>
+            <template x-if="openFaqIndex === {{ forloop.index }}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-minus text-brand-blue flex-shrink-0"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </template>
+            <template x-if="openFaqIndex !== {{ forloop.index }}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus text-gray-400 flex-shrink-0"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </template>
+          </button>
+          <div x-show="openFaqIndex === {{ forloop.index }}" x-transition class="px-6 pb-6 text-gray-600 leading-relaxed bg-gray-50/50">
+            {{ block.settings.answer }}
+          </div>
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js" defer></script>
+
+{% schema %}
+{
+  "name": "FAQ",
+  "settings": [],
+  "blocks": [
+    {
+      "type": "faq",
+      "name": "FAQ Item",
+      "settings": [
+        {
+          "type": "text",
+          "id": "question",
+          "label": "Question",
+          "default": "How do I collect my sample? Is it difficult?"
+        },
+        {
+          "type": "textarea",
+          "id": "answer",
+          "label": "Answer",
+          "default": "Not at all. Your Gut Discovery Kit comes with a specialized, non-invasive collection tube. You only need a tiny amount of sample (about the size of a grain of rice). It takes less than 5 minutes in the privacy of your own home."
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "FAQ",
+      "blocks": [
+        {
+          "type": "faq"
+        },
+        {
+          "type": "faq"
+        },
+        {
+          "type": "faq"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,77 @@
+<!doctype html>
+<html class="no-js" lang="{{ request.locale.iso_code }}">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#374C7A">
+    <link rel="canonical" href="{{ canonical_url }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <title>
+      {{ page_title }}
+      {%- unless page_title contains shop.name %} &ndash; {{ shop.name }}{% endunless -%}
+    </title>
+
+    {% render 'meta-tags' %}
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              // GMTCC Brand Palette
+              brand: {
+                blue: '#374C7A',      // Primary Strong
+                lightGreen: '#EAEFEB', // Backgrounds/Wash
+                luminous: '#EBFDC1',   // Accents/Highlights
+                black: '#191919',      // Text/Secondary
+                offWhite: '#F5F5F5'    // Secondary BG
+              },
+              // Functional colors (mapping to brand or utilities)
+              primary: '#374C7A',    // Map to Brand Blue
+              secondary: '#191919',  // Map to Brand Black
+              accent: '#EBFDC1',     // Map to Brand Luminous
+              light: '#EAEFEB',      // Map to Brand Light Green
+              alert: '#E76F51'       // Kept for error/urgent states
+            },
+            fontFamily: {
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
+
+    {{ content_for_header }}
+
+    <script>document.documentElement.className = document.documentElement.className.replace('no-js', 'js');</script>
+  </head>
+
+  <body class="bg-brand-offWhite text-brand-black antialiased">
+    <a class="skip-to-content-link" href="#MainContent">
+      {{ 'accessibility.skip_to_text' | t }}
+    </a>
+
+    {% section 'header' %}
+
+    <main id="MainContent" role="main">
+      {{ content_for_layout }}
+    </main>
+
+    {% section 'footer' %}
+
+    <script>
+      window.shopUrl = '{{ request.origin }}';
+      window.routes = {
+        cart_add_url: '{{ routes.cart_add_url }}',
+        cart_change_url: '{{ routes.cart_change_url }}',
+        cart_update_url: '{{ routes.cart_update_url }}',
+        predictive_search_url: '{{ routes.predictive_search_url }}'
+      };
+    </script>
+  </body>
+</html>

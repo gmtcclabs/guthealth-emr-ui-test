@@ -1,0 +1,247 @@
+{{ 'section-product.css' | asset_url | stylesheet_tag }}
+{{ 'component-accordion.css' | asset_url | stylesheet_tag }}
+{{ 'component-price.css' | asset_url | stylesheet_tag }}
+{{ 'component-slider.css' | asset_url | stylesheet_tag }}
+{{ 'component-rating.css' | asset_url | stylesheet_tag }}
+{{ 'component-deferred-media.css' | asset_url | stylesheet_tag }}
+
+{%- assign first_3d_model = product.media | where: "media_type", "model" | first -%}
+{%- if first_3d_model -%}
+  {{ 'component-product-model.css' | asset_url | stylesheet_tag }}
+  <link
+    id="ModelViewerStyle"
+    rel="stylesheet"
+    href="https://cdn.shopify.com/model-viewer-ui/assets/v1.0/model-viewer-ui.css"
+    media="print"
+    onload="this.media='all'"
+  >
+  <link
+    id="ModelViewerOverride"
+    rel="stylesheet"
+    href="{{ 'component-model-viewer-ui.css' | asset_url }}"
+    media="print"
+    onload="this.media='all'"
+  >
+{%- endif -%}
+
+<div class="gmtcc-product-page" style="background: var(--color-brand-off-white); min-height: 100vh;">
+  <div class="page-width" style="padding: 2rem 0;">
+    <div class="product-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start;">
+      
+      <!-- Product Images -->
+      <div class="product-media">
+        {%- if product.selected_or_first_available_variant.featured_media -%}
+          <div class="product-media__main" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+            <img 
+              src="{{ product.selected_or_first_available_variant.featured_media | image_url: width: 600 }}"
+              alt="{{ product.selected_or_first_available_variant.featured_media.alt | escape }}"
+              style="width: 100%; height: auto; display: block;"
+            >
+          </div>
+        {%- endif -%}
+        
+        {%- if product.media.size > 1 -%}
+          <div class="product-media__thumbs" style="display: flex; gap: 1rem; margin-top: 1rem; overflow-x: auto;">
+            {%- for media in product.media -%}
+              <div class="thumb" style="flex-shrink: 0; width: 80px; height: 80px; background: white; border-radius: 8px; overflow: hidden; cursor: pointer; border: 2px solid transparent;">
+                <img 
+                  src="{{ media | image_url: width: 160 }}"
+                  alt="{{ media.alt | escape }}"
+                  style="width: 100%; height: 100%; object-fit: cover;"
+                >
+              </div>
+            {%- endfor -%}
+          </div>
+        {%- endif -%}
+      </div>
+
+      <!-- Product Info -->
+      <div class="product-info">
+        <div class="product-header" style="margin-bottom: 2rem;">
+          <h1 style="font-size: 2.5rem; font-weight: 700; color: var(--color-brand-blue); margin-bottom: 1rem; line-height: 1.2;">
+            {{ product.title }}
+          </h1>
+          
+          <div class="price-wrapper" style="margin-bottom: 1.5rem;">
+            <span class="price" style="font-size: 2rem; font-weight: 600; color: var(--color-brand-black);">
+              {{ product.selected_or_first_available_variant.price | money }}
+            </span>
+            {%- if product.selected_or_first_available_variant.compare_at_price > product.selected_or_first_available_variant.price -%}
+              <span class="price-compare" style="font-size: 1.5rem; color: #999; text-decoration: line-through; margin-left: 0.5rem;">
+                {{ product.selected_or_first_available_variant.compare_at_price | money }}
+              </span>
+            {%- endif -%}
+          </div>
+
+          {%- if product.description != blank -%}
+            <div class="product-description" style="color: var(--color-brand-black); opacity: 0.8; line-height: 1.6; margin-bottom: 2rem;">
+              {{ product.description }}
+            </div>
+          {%- endif -%}
+        </div>
+
+        <!-- Product Form -->
+        <product-form class="product-form">
+          <div class="product-form__error-message-wrapper" role="alert" hidden>
+            <svg
+              aria-hidden="true"
+              focusable="false"
+              class="icon icon-error"
+              viewBox="0 0 13 13"
+            >
+              <circle cx="6.5" cy="6.50049" r="5.5" stroke="white" stroke-width="2"/>
+              <circle cx="6.5" cy="6.5" r="5.5" fill="#EB001B" stroke="#EB001B" stroke-width="0.7"/>
+              <path d="m5.87413 3.52832 5.6689 0.112701 0.11662 5.66816-5.66178-0.112865z" fill="white"/>
+              <path d="m4.10322 5.15332 5.4077 0.112701 0.11662 5.66816-5.4077-0.112865z" fill="white"/>
+              <path d="m6.5019 5.504 0.00147 2.9731" stroke="#EB001B" stroke-width="1.25"/>
+              <path d="m6.5019 8.28931 0.00147 1.24139" stroke="#EB001B" stroke-width="1.25"/>
+            </svg>
+            <span class="product-form__error-message"></span>
+          </div>
+
+          {%- form 'product',
+            product,
+            id: 'product-form',
+            class: 'form',
+            novalidate: 'novalidate',
+            data-type: 'add-to-cart-form'
+          -%}
+            <input
+              type="hidden"
+              name="id"
+              value="{{ product.selected_or_first_available_variant.id }}"
+              disabled
+            >
+
+            {%- unless product.has_only_default_variant -%}
+              <variant-radios
+                class="no-js-hidden"
+                data-section="{{ section.id }}"
+                data-url="{{ product.url }}"
+                {{ block.shopify_attributes }}
+              >
+                {%- for option in product.options_with_values -%}
+                  <fieldset class="js product-form__input" style="margin-bottom: 1.5rem;">
+                    <legend class="form__label" style="font-weight: 600; color: var(--color-brand-blue); margin-bottom: 0.5rem;">
+                      {{ option.name }}
+                    </legend>
+                    {%- for value in option.values -%}
+                      <input
+                        type="radio"
+                        id="{{ section.id }}-{{ option.position }}-{{ forloop.index0 }}"
+                        name="{{ option.name }}"
+                        value="{{ value | escape }}"
+                        form="{{ product_form_id }}"
+                        {% if option.selected_value == value %}checked{% endif %}
+                        style="margin-right: 0.5rem;"
+                      >
+                      <label for="{{ section.id }}-{{ option.position }}-{{ forloop.index0 }}" style="margin-right: 1rem; cursor: pointer;">
+                        {{ value }}
+                      </label>
+                    {%- endfor -%}
+                  </fieldset>
+                {%- endfor -%}
+              </variant-radios>
+            {%- endunless -%}
+
+            <div class="product-form__buttons" style="margin-top: 2rem;">
+              <button
+                type="submit"
+                name="add"
+                class="btn product-form__cart-submit"
+                style="width: 100%; background: var(--color-brand-blue); color: white; padding: 1rem 2rem; border: none; border-radius: 8px; font-size: 1.125rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease;"
+                {%- if product.selected_or_first_available_variant.available == false -%}disabled{%- endif -%}
+              >
+                <span>
+                  {%- if product.selected_or_first_available_variant.available -%}
+                    {{ 'products.product.add_to_cart' | t }}
+                  {%- else -%}
+                    {{ 'products.product.sold_out' | t }}
+                  {%- endif -%}
+                </span>
+                <div class="loading-overlay__spinner hidden">
+                  <svg
+                    aria-hidden="true"
+                    focusable="false"
+                    class="spinner"
+                    viewBox="0 0 66 66"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <circle
+                      class="path"
+                      fill="none"
+                      stroke-width="6"
+                      cx="33"
+                      cy="33"
+                      r="30"
+                    ></circle>
+                  </svg>
+                </div>
+              </button>
+            </div>
+          {%- endform -%}
+        </product-form>
+
+        <!-- Trust Badges -->
+        <div class="trust-badges" style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #e5e5e5;">
+          <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+            <div class="trust-item" style="display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--color-brand-blue);">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+              </svg>
+              <span style="font-size: 0.875rem; color: var(--color-brand-black);">Secure Checkout</span>
+            </div>
+            <div class="trust-item" style="display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--color-brand-blue);">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+              </svg>
+              <span style="font-size: 0.875rem; color: var(--color-brand-black);">Free Shipping</span>
+            </div>
+            <div class="trust-item" style="display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--color-brand-blue);">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+              </svg>
+              <span style="font-size: 0.875rem; color: var(--color-brand-black);">Expert Support</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .btn:hover {
+    background: var(--color-brand-black) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  
+  .thumb:hover {
+    border-color: var(--color-brand-blue) !important;
+  }
+  
+  @media (max-width: 768px) {
+    .product-grid {
+      grid-template-columns: 1fr !important;
+      gap: 2rem !important;
+    }
+    
+    .gmtcc-product-page h1 {
+      font-size: 2rem !important;
+    }
+    
+    .trust-badges > div {
+      justify-content: center;
+    }
+  }
+</style>
+
+<script src="{{ 'product-form.js' | asset_url }}" defer="defer"></script>
+
+{%- if first_3d_model -%}
+  <script type="application/json" id="ProductJSON-{{ product.id }}">
+    {{ product.media | where: 'media_type', 'model' | json }}
+  </script>
+  <script src="{{ 'product-model.js' | asset_url }}" defer></script>
+{%- endif -%}
